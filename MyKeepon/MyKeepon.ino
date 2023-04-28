@@ -50,7 +50,7 @@ void bootup()
   Serial.write((byte)0);
 }
 
-boolean isNextWord(char* msg, char* wordToCompare, int* i) {
+boolean isNextWord(const char* msg, const char* wordToCompare, int* i) {
   int j = 0;
   while (msg[j] == wordToCompare[j++]);
   if (j >= strlen(wordToCompare)) {
@@ -79,7 +79,20 @@ int nextInt(char* msg) {
 
 boolean parseMsg(char* msg, byte* cmd, byte* device) {
   int i = 0, value;
+//  Serial.print("message: ");
+//  Serial.println(msg);
+//  Serial.print("starting newline: ");
+//  Serial.println(msg[i] == '\n');
+  if (msg[i] == '\n'){
+    i++;
+  }
+//  Serial.print("i: ");
+//  Serial.println(i);
+//  Serial.print("message at i: ");
+//  Serial.println(msg[i]);
 
+  Serial.print("message: ");
+  Serial.println(msg);
   if (isNextWord(&msg[i], "SOUND", &i)) {
     *device = SOUND;
     if (isNextWord(&msg[i], "PLAY", &i)) {
@@ -99,7 +112,7 @@ boolean parseMsg(char* msg, byte* cmd, byte* device) {
       cmd[1] = B00000000;
     } 
     else {
-      Serial.println("Unknown command.");
+      Serial.println("Unknown command -- sound.");
       return false;
     }
   } 
@@ -118,13 +131,15 @@ boolean parseMsg(char* msg, byte* cmd, byte* device) {
       cmd[1] = (byte)nextInt(&msg[i]);
     } 
     else {
-      Serial.println("Unknown command.");
+      Serial.println("Unknown command -- speed.");
       return false;
     }
   } 
   else if (isNextWord(&msg[i], "MOVE", &i)) {
+//    Serial.println("move");
     *device = MOTOR;
     if (isNextWord(&msg[i], "PAN", &i)) {
+//      Serial.println("pan");
       cmd[0] = 4;
       cmd[1] = (byte)(nextInt(&msg[i]) + 127);
     } 
@@ -133,6 +148,7 @@ boolean parseMsg(char* msg, byte* cmd, byte* device) {
       cmd[1] = (byte)(nextInt(&msg[i]) + 127);
     } 
     else if (isNextWord(&msg[i], "SIDE", &i)) {
+//      Serial.println("side");
       cmd[0] = 0;
       if (isNextWord(&msg[i], "CYCLE", &i))
         cmd[1] = 0;
@@ -145,7 +161,7 @@ boolean parseMsg(char* msg, byte* cmd, byte* device) {
       else if (isNextWord(&msg[i], "LEFT", &i))
         cmd[1] = 4;
       else {
-        Serial.println("Unknown command.");
+        Serial.println("Unknown command -- move side.");
         return false;
       }
     } 
@@ -160,7 +176,7 @@ boolean parseMsg(char* msg, byte* cmd, byte* device) {
       else if (isNextWord(&msg[i], "HALFUP", &i))
         cmd[1] = -4;
       else {
-        Serial.println("Unknown command.");
+        Serial.println("Unknown command -- move pon.");
         return false;
       }
     } 
@@ -169,7 +185,7 @@ boolean parseMsg(char* msg, byte* cmd, byte* device) {
       cmd[1] = 16;
     } 
     else {
-      Serial.println("Unknown command.");
+      Serial.println("Unknown command -- move.");
       return false;
     }    
   } 
@@ -191,29 +207,29 @@ boolean parseMsg(char* msg, byte* cmd, byte* device) {
       cmd[1] = 240;
     } 
     else {
-      Serial.println("Unknown command.");
+      Serial.println("Unknown command -- mode.");
       return false;
     }
   } 
   else {
-    Serial.println("Unknown command.");
+    Serial.println("Unknown command -- general.");
     return false;
   }
   return true;
 }
 
 boolean buttonState[8];
-char* buttonName[] = {
+const char* buttonName[] = {
   "DANCE", "", "HEAD", "TOUCH",
   "RIGHT", "FRONT", "LEFT", "BACK"};
 
 boolean motorState[8];
-char* motorName[] = {
+const char* motorName[] = {
   "PON FINISHED", "SIDE FINISHED", "TILT FINISHED", "PAN FINISHED",
   "PON STALLED", "SIDE STALLED", "TILT STALLED", "PAN STALLED"};
 
 int encoderState[4], audioState[5], emfState[3], positionState[3];
-char* encoderName[] = {
+const char* encoderName[] = {
   "TILT NOREACH", "TILT FORWARD", "TILT BACK", "TILT UP",
   "PON HALFDOWN", "PON UP", "PON DOWN", "PON HALFUP",
   "SIDE CENTER", "SIDE LEFT", "SIDE RIGHT", "SIDE CENTER",
@@ -224,7 +240,7 @@ void query() {
   int i;
   byte buttonResponse, motorResponse;
   int intResponse;
-
+//  Serial.println("query");
   if (millis() - updatedButton > 100) {
     updatedButton = millis();
     Wire.requestFrom((int)BUTTON, 1);
@@ -270,20 +286,20 @@ void query() {
       }
       motorResponse = Wire.read();
       if (motorResponse != audioState[0]) {
-        Serial.print("AUDIO TEMPO ");
-        Serial.println(motorResponse);
+     //   Serial.print("AUDIO TEMPO ");
+     //   Serial.println(motorResponse);
         audioState[0] = motorResponse;
       }
       motorResponse = Wire.read();
       if (motorResponse != audioState[1]) {
-        Serial.print("AUDIO MEAN ");
-        Serial.println(motorResponse);
+       // Serial.print("AUDIO MEAN ");
+       // Serial.println(motorResponse);
         audioState[1] = motorResponse;
       }
       motorResponse = Wire.read();
       if (motorResponse != audioState[2]) {
-        Serial.print("AUDIO RANGE ");
-        Serial.println(motorResponse);
+     //   Serial.print("AUDIO RANGE ");
+      //  Serial.println(motorResponse);
         audioState[2] = motorResponse;
       }
       motorResponse = Wire.read();
@@ -365,9 +381,13 @@ void loop() {
     query();
 
     if (Serial.available() > 0) {
-      int i = 0;
+      int i = 0; 
+//      Serial.println(i);
       while ((msg[i++] = Serial.read()) != ';' && i < 30 && analogRead(0) > 512) {
         while (Serial.available() <= 0 && analogRead(0) > 512);
+      }
+      while (Serial.available() > 0 && analogRead(0) > 512){
+        Serial.read();
       }
       msg[i] = '\0';
       if (parseMsg(msg, cmd, &device)) {
@@ -383,5 +403,3 @@ void loop() {
     }
   }
 }
-
-
